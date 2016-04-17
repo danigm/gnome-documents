@@ -378,6 +378,9 @@ const Embed = new Lang.Class({
         case Documents.ViewType.LOK:
             this._stack.set_visible_child_name('preview-lok');
             break;
+        case Documents.ViewType.EPUB:
+            this._stack.set_visible_child_name('preview-lok');
+            break;
         case Documents.ViewType.NONE:
         default:
             log('Something bad happened and the document type is unset');

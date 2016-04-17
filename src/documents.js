@@ -49,8 +49,50 @@ const Utils = imports.utils;
 const ViewType = {
     NONE: 0,
     EV: 1,
-    LOK: 2
+    LOK: 2,
+    EPUB: 3
 };
+
+const GenericDoc = new Lang.Class({
+    Name: 'GenericDoc',
+    _init: function(uri) {
+        this._uri = uri;
+        this._n_pages = 1;
+    },
+
+    get_n_pages: function() {
+        return this._n_pages;
+    },
+
+    get_uri: function() {
+        return this._uri;
+    }
+});
+const GenericDocModel = new Lang.Class({
+    Name: 'GenericDocModel',
+    _init: function(uri) {
+        this._uri = uri;
+        this._sizing_mode = EvView.SizingMode.AUTOMATIC;
+        this._page_layout = EvView.PageLayout.AUTOMATIC;
+        this.isEpub = true;
+    },
+
+    get_document: function() {
+        return new GenericDoc(this._uri);
+    },
+
+    set_sizing_mode: function(sizing_mode) {
+        this._sizing_mode = sizing_mode;
+    },
+
+    set_page_layout: function(page_layout) {
+        this._page_layout = page_layout;
+    },
+
+    connect: function(signal, callback) { },
+    disconnect: function(signal, callback) { }
+});
+
 
 const DeleteItemJob = new Lang.Class({
     Name: 'DeleteItemJob',
@@ -382,6 +424,10 @@ const DocCommon = new Lang.Class({
         if (!docModel)
             return false;
 
+        if (docModel.isEpub) {
+            return false;
+        }
+
         return EvView.PrintOperation.exists_for_document(docModel.get_document());
     },
 
@@ -601,8 +647,7 @@ const DocCommon = new Lang.Class({
     },
 
     loadLocal: function(passwd, cancellable, callback) {
-        if (this.mimeType == 'application/epub+zip' ||
-            this.mimeType == 'application/x-mobipocket-ebook' ||
+        if (this.mimeType == 'application/x-mobipocket-ebook' ||
             this.mimeType == 'application/x-fictionbook+xml' ||
             this.mimeType == 'application/x-zip-compressed-fb2') {
             let exception = new GLib.Error(Gio.IOErrorEnum,
@@ -620,6 +665,12 @@ const DocCommon = new Lang.Class({
                                            "Internal error: LibreOffice isn't available");
             }
             callback (this, null, exception);
+            return;
+        }
+
+        if (this.mimeType == 'application/epub+zip') {
+            let docModel = new GenericDocModel(this.uri);
+            callback(this, docModel, null);
             return;
         }
 
@@ -704,6 +755,8 @@ const DocCommon = new Lang.Class({
     updateViewType: function() {
         if (LOKView.isOpenDocumentFormat(this.mimeType) && !Application.application.isBooks) {
             this.viewType = ViewType.LOK;
+        } else if (this.mimeType == 'application/epub+zip') {
+            this.viewType = ViewType.EPUB;
         } else {
             this.viewType = ViewType.EV;
         }
