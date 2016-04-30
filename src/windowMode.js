@@ -33,7 +33,8 @@ const WindowMode = {
     PREVIEW_LOK: 3,
     EDIT: 4,
     COLLECTIONS: 5,
-    SEARCH: 6
+    SEARCH: 6,
+    PREVIEW_EPUB: 7
 };
 
 const ModeController = new Lang.Class({
