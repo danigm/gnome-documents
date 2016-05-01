@@ -50,6 +50,7 @@ const EPUBView = new Lang.Class({
         this._uri = null;
         this._overlay = overlay;
         this.get_style_context().add_class('documents-scrolledwin');
+        this.page = 1;
 
         this._errorBox = new ErrorBox.ErrorBox();
         this.add_named(this._errorBox, 'error');
@@ -140,6 +141,7 @@ const EPUBView = new Lang.Class({
 
         this.set_visible_child_full('view', Gtk.StackTransitionType.NONE);
         this._copy.enabled = false;
+        this.page = 1;
     },
 
     _createView: function() {
@@ -189,12 +191,18 @@ const EPUBView = new Lang.Class({
 
     go_next: function() {
         this._epubdoc.go_next();
-        this._load_current();
+        if (this.page < this._epubSpine.length) {
+            this.page++;
+            this._load_current();
+        }
     },
 
     go_prev: function() {
         this._epubdoc.go_prev();
-        this._load_current();
+        if (this.page > 1) {
+            this.page--;
+            this._load_current();
+        }
     },
 
     _load_current: function() {
@@ -318,6 +326,8 @@ const EPUBViewNavControls = new Lang.Class({
         this.next_widget.connect('enter-notify-event', Lang.bind(this, this._onEnterNotify));
         this.next_widget.connect('leave-notify-event', Lang.bind(this, this._onLeaveNotify));
         this._overlay.connect('motion-notify-event', Lang.bind(this, this._onMotion));
+        this._visible = true;
+
     },
 
     _onEnterNotify: function() {
@@ -377,13 +387,32 @@ const EPUBViewNavControls = new Lang.Class({
 
     _queueAutoHide: function() {
         this._unqueueAutoHide();
-        //FIXME: disable this temporarily till motion-notify-event works
-        //this._autoHideId = Mainloop.timeout_add_seconds(_AUTO_HIDE_TIMEOUT, Lang.bind(this, this._autoHide));
+        this._autoHideId = Mainloop.timeout_add_seconds(_AUTO_HIDE_TIMEOUT, Lang.bind(this, this._autoHide));
     },
 
     _updateVisibility: function() {
-        this._fadeInButton(this.prev_widget);
-        this._fadeInButton(this.next_widget);
+        if (!this._epubView) {
+            return;
+        }
+
+        if (!this._visible || !this._visibleInternal) {
+            this._fadeOutButton(this.prev_widget);
+            this._fadeOutButton(this.next_widget);
+            return;
+        }
+
+        if (this._epubView.page == 1) {
+            this._fadeOutButton(this.prev_widget);
+        } else {
+            this._fadeInButton(this.prev_widget);
+        }
+
+        var l = this._epubView._epubSpine.length;
+        if (this._epubView.page >= l) {
+            this._fadeOutButton(this.next_widget);
+        } else {
+            this._fadeInButton(this.next_widget);
+        }
     },
 
     _fadeInButton: function(widget) {
