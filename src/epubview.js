@@ -19,6 +19,7 @@
  *
  */
 
+const GLib = imports.gi.GLib;
 const Gdk = imports.gi.Gdk;
 const Gtk = imports.gi.Gtk;
 const WebKit2 = imports.gi.WebKit2;
@@ -91,7 +92,7 @@ const EPUBView = new Lang.Class({
         }
         this._epubSpine = this._epubdoc.get_spine();
 
-        this.view.load_bytes(this._epubdoc.get_current(), null, null, null);
+        this._load_current();
         this.set_visible_child_name('view');
         //this._progressBar.show();
     },
@@ -100,6 +101,37 @@ const EPUBView = new Lang.Class({
         if (doc.viewType != Documents.ViewType.EPUB)
             return;
         this._setError(message, exception.message);
+    },
+
+    _replaceResource: function(doc, tag, attr) {
+        var ret2 = GLib.strdup(doc);
+        var rex = new RegExp(attr+'\s*=\s*"(.*)"', "ig");
+        var match = rex.exec(doc);
+        while(match) {
+            // removing relative path
+            var path = match[1].replace(/^(\.*\/)/, '');
+            var data = this._epubdoc.get_resource_v(path);
+            var mime = this._epubdoc.get_resource_mime(path);
+            var data2 = "data:" + mime + ";base64," + GLib.base64_encode(data);
+            ret2 = ret2.replace(match[1], data2);
+            match = rex.exec(doc);
+        }
+
+        return ret2;
+    },
+
+    replaceResources: function(current) {
+        // resources as base64 to avoid path search
+
+        let ret = current;
+        // css
+        ret = this._replaceResource(ret, "link", "href");
+        // images
+        ret = this._replaceResource(ret, "img", "src");
+        // svg images
+        ret = this._replaceResource(ret, "image", "xlink:href");
+
+        return ret;
     },
 
     reset: function () {
@@ -112,6 +144,12 @@ const EPUBView = new Lang.Class({
 
     _createView: function() {
         this.view = new WebKit2.WebView();
+        let epubprev = this;
+        this.view.connect("load-changed",
+            Lang.bind(this, function (wv, ev) {
+                if (ev == WebKit2.LoadEvent.FINISHED) {
+                }
+            }));
         this._sw.add(this.view);
         this.view.show();
 
@@ -148,12 +186,18 @@ const EPUBView = new Lang.Class({
 
     go_next: function() {
         this._epubdoc.go_next();
-        this.view.load_bytes(this._epubdoc.get_current(), null, null, null);
+        this._load_current();
     },
 
     go_prev: function() {
         this._epubdoc.go_prev();
-        this.view.load_bytes(this._epubdoc.get_current(), null, null, null);
+        this._load_current();
+    },
+
+    _load_current: function() {
+        let current = this._epubdoc.get_current();
+        current = this.replaceResources(String(current));
+        this.view.load_html(current, null, null, null);
     },
 });
 
