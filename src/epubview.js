@@ -105,7 +105,7 @@ const EPUBView = new Lang.Class({
 
     _replaceResource: function(doc, tag, attr) {
         var ret2 = GLib.strdup(doc);
-        var rex = new RegExp(attr+'\s*=\s*"(.*)"', "ig");
+        var rex = new RegExp(attr+'\s*=\s*"([^"]*)"', "ig");
         var match = rex.exec(doc);
         while(match) {
             // removing relative path
@@ -144,12 +144,15 @@ const EPUBView = new Lang.Class({
 
     _createView: function() {
         this.view = new WebKit2.WebView();
+        let settings = this.view.get_settings();
         let epubprev = this;
+
         this.view.connect("load-changed",
             Lang.bind(this, function (wv, ev) {
                 if (ev == WebKit2.LoadEvent.FINISHED) {
                 }
             }));
+
         this._sw.add(this.view);
         this.view.show();
 
