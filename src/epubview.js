@@ -228,6 +228,9 @@ const EPUBViewToolbar = new Lang.Class({
             }));
     },
 
+    createSearchbar: function() {
+    },
+
     _getPreviewMenu: function() {
         let builder = new Gtk.Builder();
         builder.add_from_resource('/org/gnome/Documents/ui/preview-menu.ui');
