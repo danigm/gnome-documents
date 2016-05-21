@@ -51,6 +51,7 @@ AC_SUBST(LIBM)
 
 EVINCE_MIN_VERSION=3.13.3
 WEBKITGTK_MIN_VERSION=2.6.0
+LIBGEPUB_MIN_VERSION=0.3
 GLIB_MIN_VERSION=2.39.3
 GTK_MIN_VERSION=3.19.1
 GOBJECT_INTROSPECTION_MIN_VERSION=1.31.6
@@ -76,6 +77,7 @@ PKG_CHECK_MODULES(DOCUMENTS,
                   evince-document-3.0 >= $EVINCE_MIN_VERSION
                   evince-view-3.0 >= $EVINCE_MIN_VERSION
                   webkit2gtk-4.0 >= $WEBKITGTK_MIN_VERSION
+                  libgepub >= $LIBGEPUB_MIN_VERSION
                   gjs-1.0
                   glib-2.0 >= $GLIB_MIN_VERSION
                   gobject-introspection-1.0 >= $GOBJECT_INTROSPECTION_MIN_VERSION
