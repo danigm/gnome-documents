@@ -31,6 +31,7 @@ const Application = imports.application;
 const ErrorBox = imports.errorBox;
 const MainToolbar = imports.mainToolbar;
 const Documents = imports.documents;
+const Searchbar = imports.searchbar;
 
 const Mainloop = imports.mainloop;
 const Signals = imports.signals;
@@ -178,7 +179,99 @@ const EPUBView = new Lang.Class({
         let current = this._epubdoc.get_current();
         current = this.replaceResources(String(current));
         this.view.load_html(current, null, null, null);
+    }
+});
+
+const EPUBSearchbar = new Lang.Class({
+    Name: 'EPUBSearchbar',
+    Extends: Searchbar.Searchbar,
+
+    _init: function(previewView) {
+        this._previewView = previewView;
+        this.parent();
     },
+
+    createSearchWidgets: function() {
+        let sb = this;
+
+        this._searchContainer = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL,
+                                              halign: Gtk.Align.CENTER});
+        this._searchContainer.get_style_context().add_class('linked');
+
+        this._searchEntry = new Gtk.SearchEntry({ width_request: 500 });
+        this._searchEntry.connect('activate', Lang.bind(this,
+            function() {
+                Application.application.activate_action('find-next', null);
+            }));
+        this._searchContainer.add(this._searchEntry);
+
+        this._prev = new Gtk.Button({ action_name: 'app.find-prev' });
+        this._prev.set_image(new Gtk.Image({ icon_name: 'go-up-symbolic',
+                                             icon_size: Gtk.IconSize.MENU }));
+        this._prev.set_tooltip_text(_("Find Previous"));
+        this._prev.connect('clicked', Lang.bind(this, function() {
+            sb.prev();
+        }));
+        this._searchContainer.add(this._prev);
+
+        this._next = new Gtk.Button({ action_name: 'app.find-next' });
+        this._next.set_image(new Gtk.Image({ icon_name: 'go-down-symbolic',
+                                             icon_size: Gtk.IconSize.MENU }));
+        this._next.set_tooltip_text(_("Find Next"));
+        this._next.connect('clicked', Lang.bind(this, function() {
+            sb.next();
+        }));
+        this._searchContainer.add(this._next);
+
+        let fc = this._previewView.view.get_find_controller();
+        fc.connect('found-text', Lang.bind(this,
+            function(w, match_count, data) {
+                this._onSearchChanged(this._previewView, match_count);
+            }));
+
+        this._onSearchChanged(this._previewView, 0);
+    },
+
+    _onSearchChanged: function(view, results) {
+        let findPrev = Application.application.lookup_action('find-prev');
+        let findNext = Application.application.lookup_action('find-next');
+        findPrev.enabled = Boolean(results);
+        findNext.enabled = Boolean(results);
+    },
+
+    search: function(str) {
+        let fc = this._previewView.view.get_find_controller();
+        fc.search(str, WebKit2.FindOptions.CASE_INSENSITIVE, 0);
+    },
+
+    prev: function() {
+        let fc = this._previewView.view.get_find_controller();
+        fc.search_previous();
+    },
+
+    next: function() {
+        let fc = this._previewView.view.get_find_controller();
+        fc.search_next();
+    },
+
+    entryChanged: function() {
+        this.search(this._searchEntry.get_text());
+    },
+
+    reveal: function() {
+        this.parent();
+        this.search(this._searchEntry.get_text());
+    },
+
+    conceal: function() {
+        let fc = this._previewView.view.get_find_controller();
+        fc.search('', WebKit2.FindOptions.CASE_INSENSITIVE, 0);
+        fc.search_finish();
+
+        this.searchChangeBlocked = true;
+        this.parent();
+        this.searchChangeBlocked = false;
+    }
 });
 
 const EPUBViewToolbar = new Lang.Class({
@@ -195,7 +288,7 @@ const EPUBViewToolbar = new Lang.Class({
         this._model = null;
 
         this._searchAction = Application.application.lookup_action('search');
-        this._searchAction.enabled = false;
+        this._searchAction.enabled = true;
 
         this._gearMenu = Application.application.lookup_action('gear-menu');
         this._gearMenu.enabled = true;
@@ -229,6 +322,7 @@ const EPUBViewToolbar = new Lang.Class({
     },
 
     createSearchbar: function() {
+        return new EPUBSearchbar(this._previewView);
     },
 
     _getPreviewMenu: function() {
