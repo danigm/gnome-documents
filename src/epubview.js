@@ -229,7 +229,7 @@ const EPUBViewToolbar = new Lang.Class({
         this._searchAction.enabled = false;
 
         this._gearMenu = Application.application.lookup_action('gear-menu');
-        this._gearMenu.enabled = false;
+        this._gearMenu.enabled = true;
 
         // back button, on the left of the toolbar
         let backButton = this.addBackButton();
@@ -263,15 +263,23 @@ const EPUBViewToolbar = new Lang.Class({
         let builder = new Gtk.Builder();
         builder.add_from_resource('/org/gnome/Documents/ui/preview-menu.ui');
         let menu = builder.get_object('preview-menu');
+        let section = builder.get_object('open-section');
 
-        let doc = Application.documentManager.getActiveItem();
-        if (doc && doc.defaultAppName) {
-            let section = builder.get_object('open-section');
-            section.remove(0);
-            section.prepend(_("Open with %s").format(doc.defaultAppName), 'app.open-current');
-        }
+        section.remove(0);
+        // No edit support yet
+        section.remove(0);
+        // No print support yet
+        section.remove(0);
+        // No present support yet
+        section.remove(0);
+
+        // No rotate support
+        section = builder.get_object('rotate-section');
+        section.remove(0);
+        section.remove(0);
 
         return menu;
+
     },
 
     createSearchbar: function() {
