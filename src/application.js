@@ -21,11 +21,9 @@
 
 const Lang = imports.lang;
 const Mainloop = imports.mainloop;
-const Signals = imports.signals;
 const _ = imports.gettext.gettext;
 
 const EvDoc = imports.gi.EvinceDocument;
-const GdPrivate = imports.gi.GdPrivate;
 const Gdk = imports.gi.Gdk;
 const Gio = imports.gi.Gio;
 const Goa = imports.gi.Goa;
@@ -36,12 +34,8 @@ const Tracker = imports.gi.Tracker;
 const TrackerControl = imports.gi.TrackerControl;
 
 const ChangeMonitor = imports.changeMonitor;
-const Documents = imports.documents;
 const Format = imports.format;
-const Main = imports.main;
 const MainWindow = imports.mainWindow;
-const MainToolbar = imports.mainToolbar;
-const Manager = imports.manager;
 const Miners = imports.miners;
 const Notifications = imports.notifications;
 const Properties = imports.properties;
@@ -185,7 +179,7 @@ const Application = new Lang.Class({
             function() {
                 let state = settings.get_value('view-as');
                 if (state.get_string()[0] != action.state.get_string()[0])
-                    action.state = state;
+                    action.change_state(state);
             }));
     },
 
@@ -194,7 +188,7 @@ const Application = new Lang.Class({
             function() {
                 let state = settings.get_value('night-mode');
                 if (state.get_boolean() != action.state.get_boolean())
-                    action.state = state;
+                    action.change_state(state);
 
                 let gtkSettings = Gtk.Settings.get_default();
                 gtkSettings.gtk_application_prefer_dark_theme = state.get_boolean();
@@ -210,7 +204,7 @@ const Application = new Lang.Class({
             function() {
                 let state = settings.get_value('sort-by');
                 if (state.get_string()[0] != action.state.get_string()[0])
-                    action.state = state;
+                    action.change_state(state);
             }));
     },
 
@@ -334,14 +328,6 @@ const Application = new Lang.Class({
                         }));
                 }
             }));
-    },
-
-    _initAppMenu: function() {
-        let builder = new Gtk.Builder();
-        builder.add_from_resource('/org/gnome/Documents/ui/app-menu.ui');
-
-        let menu = builder.get_object('app-menu');
-        this.set_app_menu(menu);
     },
 
     _createMiners: function(callback) {
@@ -648,7 +634,6 @@ const Application = new Lang.Class({
         ];
 
         this._initActions();
-        this._initAppMenu();
 
         if (!this.isBooks)
             this._initGettingStarted();

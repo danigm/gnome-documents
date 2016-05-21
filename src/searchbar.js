@@ -23,16 +23,11 @@ const Gd = imports.gi.Gd;
 const Gdk = imports.gi.Gdk;
 const GLib = imports.gi.GLib;
 const Gtk = imports.gi.Gtk;
-const Tracker = imports.gi.Tracker;
-const _ = imports.gettext.gettext;
 
 const Lang = imports.lang;
-const Mainloop = imports.mainloop;
-const Signals = imports.signals;
 
 const Application = imports.application;
 const Manager = imports.manager;
-const Tweener = imports.tweener.tweener;
 const Utils = imports.utils;
 
 const Searchbar = new Lang.Class({
@@ -127,11 +122,12 @@ const Dropdown = new Lang.Class({
     Name: 'Dropdown',
     Extends: Gtk.Popover,
 
-    _init: function(relativeTo) {
-        this.parent({ relative_to: relativeTo, position: Gtk.PositionType.BOTTOM });
+    _init: function() {
+        this.parent({ position: Gtk.PositionType.BOTTOM });
 
         let grid = new Gtk.Grid({ orientation: Gtk.Orientation.HORIZONTAL,
-                                  row_homogeneous: true });
+                                  row_homogeneous: true,
+                                  visible: true });
         this.add(grid);
 
         [Application.sourceManager,
@@ -205,23 +201,8 @@ const OverviewSearchbar = new Lang.Class({
             }));
 
         // create the dropdown button
-        this._dropdownButton = new Gtk.ToggleButton(
-            { child: new Gtk.Image({ icon_name: 'go-down-symbolic',
-                                     icon_size: Gtk.IconSize.MENU }) });
-        this._dropdownButton.get_style_context().add_class('raised');
-        this._dropdownButton.get_style_context().add_class('image-button');
-        this._dropdownButton.connect('toggled', Lang.bind(this,
-            function() {
-                let active = this._dropdownButton.get_active();
-                if(active)
-                    this._dropdown.show_all();
-            }));
-
-        this._dropdown = new Dropdown(this._dropdownButton);
-        this._dropdown.connect('closed', Lang.bind(this,
-            function() {
-                this._dropdownButton.set_active(false);
-            }));
+        let dropdown = new Dropdown();
+        this._dropdownButton = new Gtk.MenuButton({ popover: dropdown });
 
         this._searchContainer = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL,
                                               halign: Gtk.Align.CENTER });

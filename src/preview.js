@@ -21,7 +21,6 @@
 
 const EvDocument = imports.gi.EvinceDocument;
 const EvView = imports.gi.EvinceView;
-const Gd = imports.gi.Gd;
 const GdPrivate = imports.gi.GdPrivate;
 const Gdk = imports.gi.Gdk;
 const Gio = imports.gi.Gio;
@@ -31,7 +30,6 @@ const _ = imports.gettext.gettext;
 
 const Lang = imports.lang;
 const Mainloop = imports.mainloop;
-const Signals = imports.signals;
 const Tweener = imports.tweener.tweener;
 
 const Application = imports.application;
@@ -40,7 +38,6 @@ const MainToolbar = imports.mainToolbar;
 const Places = imports.places;
 const Searchbar = imports.searchbar;
 const Utils = imports.utils;
-const View = imports.view;
 const WindowMode = imports.windowMode;
 const Presentation = imports.presentation;
 const Documents = imports.documents;
@@ -222,7 +219,7 @@ const PreviewView = new Lang.Class({
         let bookmark = new GdPrivate.Bookmark({ page_number: page_number });
         let hasBookmark = (this._bookmarks.find_bookmark(bookmark) != null);
 
-        this._bookmarkPage.state = GLib.Variant.new('b', hasBookmark);
+        this._bookmarkPage.change_state(GLib.Variant.new('b', hasBookmark));
     },
 
     _setError: function(primary, secondary) {

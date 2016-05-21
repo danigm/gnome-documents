@@ -20,27 +20,21 @@
  *
  */
 
-const EvView = imports.gi.EvinceView;
-const Gd = imports.gi.Gd;
 const Gdk = imports.gi.Gdk;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
-const GObject = imports.gi.GObject;
 const Gtk = imports.gi.Gtk;
 const Pango = imports.gi.Pango;
 const _ = imports.gettext.gettext;
 const C_ = imports.gettext.pgettext;
 
 const Application = imports.application;
-const Documents = imports.documents;
 const Mainloop = imports.mainloop;
-const Manager = imports.manager;
 const Notifications = imports.notifications;
 const Properties = imports.properties;
 const Query = imports.query;
 const Sharing = imports.sharing;
 const TrackerUtils = imports.trackerUtils;
-const Utils = imports.utils;
 const WindowMode = imports.windowMode;
 
 const Lang = imports.lang;
@@ -549,12 +543,18 @@ const CollectionList = new Lang.Class({
     },
 
     _onCollectionAdded: function(manager, itemAdded) {
+        if (!itemAdded.collection)
+            return;
+
         let collection =  new CollectionRow(itemAdded, OrganizeCollectionState.ACTIVE);
         collection.show_all();
         this.add(collection);
     },
 
     _onCollectionRemoved: function(manager, itemRemoved) {
+        if (!itemRemoved.collection)
+            return;
+
         let rows = this.get_children();
         for (let i = 0; i < rows.length; i++) {
             if (rows[i].collection.id == itemRemoved.id) {
