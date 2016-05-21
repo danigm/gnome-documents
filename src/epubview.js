@@ -58,11 +58,6 @@ const EPUBView = new Lang.Class({
         this._sw = new Gtk.ScrolledWindow({hexpand: true,
                                            vexpand: true});
 
-        this._progressBar = new Gtk.ProgressBar({ halign: Gtk.Align.FILL,
-                                                  valign: Gtk.Align.START });
-        this._progressBar.get_style_context().add_class('osd');
-        this._overlay.add_overlay(this._progressBar);
-
         this.add_named(this._sw, 'view');
         this._createView();
 
@@ -95,7 +90,6 @@ const EPUBView = new Lang.Class({
 
         this._load_current();
         this.set_visible_child_name('view');
-        //this._progressBar.show();
     },
 
     _onLoadError: function(manager, doc, message, exception) {
@@ -146,15 +140,6 @@ const EPUBView = new Lang.Class({
 
     _createView: function() {
         this.view = new WebKit2.WebView();
-        let settings = this.view.get_settings();
-        let epubprev = this;
-
-        this.view.connect("load-changed",
-            Lang.bind(this, function (wv, ev) {
-                if (ev == WebKit2.LoadEvent.FINISHED) {
-                }
-            }));
-
         this._sw.add(this.view);
         this.view.show();
 
@@ -166,22 +151,6 @@ const EPUBView = new Lang.Class({
         let builder = new Gtk.Builder();
         builder.add_from_resource('/org/gnome/Documents/ui/preview-context-menu.ui');
         return builder.get_object('preview-context-menu');
-    },
-
-    _onButtonPressEvent: function(widget, event) {
-        let button = event.get_button()[1];
-
-        if (button == 3) {
-            let time = event.get_time();
-            this._previewContextMenu.popup(null, null, null, button, time);
-            return true;
-        }
-
-        return false;
-   },
-
-    _onProgressChanged: function() {
-        this._progressBar.fraction = this.view.load_progress;
     },
 
     _setError: function(primary, secondary) {
@@ -280,9 +249,6 @@ const EPUBViewToolbar = new Lang.Class({
 
         return menu;
 
-    },
-
-    createSearchbar: function() {
     },
 
     _setToolbarTitle: function() {
