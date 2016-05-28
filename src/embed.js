@@ -291,8 +291,6 @@ const Embed = new Lang.Class({
             this._prepareForLOKView();
             break;
         case WindowMode.WindowMode.PREVIEW_EPUB:
-            if (oldMode == WindowMode.WindowMode.EDIT)
-                Application.documentManager.reloadActiveItem();
             this._prepareForEPUBView();
             break;
         case WindowMode.WindowMode.EDIT:
@@ -509,6 +507,8 @@ const Embed = new Lang.Class({
             this._edit.setUri(null);
         if (this._toolbar)
             this._toolbar.destroy();
+
+        this._previewEPUB.reset();
 
         // pack the toolbar
         this._toolbar = new EPUBView.EPUBViewToolbar(this._previewEPUB);

@@ -32,6 +32,7 @@ const ErrorBox = imports.errorBox;
 const MainToolbar = imports.mainToolbar;
 const Documents = imports.documents;
 const Searchbar = imports.searchbar;
+const WindowMode = imports.windowMode;
 
 const Mainloop = imports.mainloop;
 const Signals = imports.signals;
@@ -39,6 +40,10 @@ const Tweener = imports.tweener.tweener;
 
 const Gepub = imports.gi.Gepub;
 const Gio = imports.gi.Gio;
+
+function isEpub(mimeType) {
+    return (mimeType == 'application/epub+zip');
+}
 
 const EPUBView = new Lang.Class({
     Name: 'EPUBView',
@@ -50,22 +55,16 @@ const EPUBView = new Lang.Class({
 
         this._uri = null;
         this._overlay = overlay;
-        this.get_style_context().add_class('documents-scrolledwin');
         this.page = 1;
 
         this._errorBox = new ErrorBox.ErrorBox();
         this.add_named(this._errorBox, 'error');
 
-        this._sw = new Gtk.ScrolledWindow({hexpand: true,
-                                           vexpand: true});
+        this._sw = new Gtk.ScrolledWindow({ hexpand: true,
+                                            vexpand: true });
 
         this.add_named(this._sw, 'view');
         this._createView();
-
-        // create context menu
-        let model = this._getPreviewContextMenu();
-        this._previewContextMenu = Gtk.Menu.new_from_model(model);
-        this._previewContextMenu.attach_to_widget(this._sw, null);
 
         this.show_all();
 
@@ -73,22 +72,26 @@ const EPUBView = new Lang.Class({
                                             Lang.bind(this, this._onLoadStarted));
         Application.documentManager.connect('load-error',
                                             Lang.bind(this, this._onLoadError));
+        Application.modeController.connect('window-mode-changed', Lang.bind(this,
+            this._onWindowModeChanged));
+    },
+
+    _onWindowModeChanged: function() {
+        let windowMode = Application.modeController.getWindowMode();
+        if (windowMode != WindowMode.WindowMode.PREVIEW_EPUB) {
+            this._navControls.hide();
+        }
     },
 
     _onLoadStarted: function(manager, doc) {
         if (doc.viewType != Documents.ViewType.EPUB)
             return;
 
-        let docuri = doc.uri.slice(7).replace(/%20/g, ' ');
+        let f = Gio.File.new_for_uri(doc.uri);
         this._doc = doc;
-        this._epubdoc = Gepub.Doc.new(docuri);
-
-        this._epubResources = [];
-        for (var i in this._epubdoc.get_resources()) {
-            this._epubResources.push(i);
-        }
+        //this._epubdoc = new Gepub.Doc({ path: f.get_path() });
+        this._epubdoc = Gepub.Doc.new(f.get_path());
         this._epubSpine = this._epubdoc.get_spine();
-
         this._load_current();
         this.set_visible_child_name('view');
     },
@@ -100,7 +103,11 @@ const EPUBView = new Lang.Class({
     },
 
     _replaceResource: function(doc, tag, attr) {
-        var ret2 = GLib.strdup(doc);
+        // this function replaces the resource path with the base64 content
+        // of the file. It's done this way because resources paths in epub
+        // files are relative to the zip file and I can't find a way to
+        // provide the resource to webkit when it ask for it.
+        var ret2 = doc;
         var rex = new RegExp(attr+'\s*=\s*"([^"]*)"', "ig");
         var match = rex.exec(doc);
         while(match) {
@@ -116,7 +123,7 @@ const EPUBView = new Lang.Class({
         return ret2;
     },
 
-    replaceResources: function(current) {
+    _replaceResources: function(current) {
         // resources as base64 to avoid path search
 
         let ret = current;
@@ -135,8 +142,8 @@ const EPUBView = new Lang.Class({
             return;
 
         this.set_visible_child_full('view', Gtk.StackTransitionType.NONE);
-        this._copy.enabled = false;
         this.page = 1;
+        this._navControls.show();
     },
 
     _createView: function() {
@@ -148,28 +155,20 @@ const EPUBView = new Lang.Class({
         this.set_visible_child_full('view', Gtk.StackTransitionType.NONE);
     },
 
-    _getPreviewContextMenu: function() {
-        let builder = new Gtk.Builder();
-        builder.add_from_resource('/org/gnome/Documents/ui/preview-context-menu.ui');
-        return builder.get_object('preview-context-menu');
-    },
-
     _setError: function(primary, secondary) {
         this._errorBox.update(primary, secondary);
         this.set_visible_child_name('error');
     },
 
     go_next: function() {
-        this._epubdoc.go_next();
-        if (this.page < this._epubSpine.length) {
+        if (this._epubdoc.go_next()) {
             this.page++;
             this._load_current();
         }
     },
 
     go_prev: function() {
-        this._epubdoc.go_prev();
-        if (this.page > 1) {
+        if (this._epubdoc.go_prev()) {
             this.page--;
             this._load_current();
         }
@@ -177,7 +176,7 @@ const EPUBView = new Lang.Class({
 
     _load_current: function() {
         let current = this._epubdoc.get_current();
-        current = this.replaceResources(String(current));
+        current = this._replaceResources(String(current));
         this.view.load_html(current, null, null, null);
     }
 });
@@ -192,75 +191,67 @@ const EPUBSearchbar = new Lang.Class({
     },
 
     createSearchWidgets: function() {
-        let sb = this;
-
         this._searchContainer = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL,
                                               halign: Gtk.Align.CENTER});
         this._searchContainer.get_style_context().add_class('linked');
 
         this._searchEntry = new Gtk.SearchEntry({ width_request: 500 });
-        this._searchEntry.connect('activate', Lang.bind(this,
-            function() {
-                Application.application.activate_action('find-next', null);
-            }));
+        this._searchEntry.connect('activate', Lang.bind(this, function() {
+            Application.application.activate_action('find-next', null);
+        }));
         this._searchContainer.add(this._searchEntry);
 
         this._prev = new Gtk.Button({ action_name: 'app.find-prev' });
         this._prev.set_image(new Gtk.Image({ icon_name: 'go-up-symbolic',
                                              icon_size: Gtk.IconSize.MENU }));
         this._prev.set_tooltip_text(_("Find Previous"));
-        this._prev.connect('clicked', Lang.bind(this, function() {
-            sb.prev();
-        }));
+        this._prev.connect('clicked', Lang.bind(this, this._goprev));
         this._searchContainer.add(this._prev);
 
         this._next = new Gtk.Button({ action_name: 'app.find-next' });
         this._next.set_image(new Gtk.Image({ icon_name: 'go-down-symbolic',
                                              icon_size: Gtk.IconSize.MENU }));
         this._next.set_tooltip_text(_("Find Next"));
-        this._next.connect('clicked', Lang.bind(this, function() {
-            sb.next();
-        }));
+        this._next.connect('clicked', Lang.bind(this, this._gonext));
         this._searchContainer.add(this._next);
 
         let fc = this._previewView.view.get_find_controller();
-        fc.connect('found-text', Lang.bind(this,
-            function(w, match_count, data) {
-                this._onSearchChanged(this._previewView, match_count);
-            }));
+        fc.connect('found-text', Lang.bind(this, function(w, match_count, data) {
+            this._onSearchChanged(this._previewView, match_count > 0);
+        }));
 
-        this._onSearchChanged(this._previewView, 0);
+        this._onSearchChanged(this._previewView, false);
     },
 
     _onSearchChanged: function(view, results) {
         let findPrev = Application.application.lookup_action('find-prev');
         let findNext = Application.application.lookup_action('find-next');
-        findPrev.enabled = Boolean(results);
-        findNext.enabled = Boolean(results);
+        findPrev.enabled = results;
+        findNext.enabled = results;
     },
 
-    search: function(str) {
+    _search: function(str) {
         let fc = this._previewView.view.get_find_controller();
         fc.search(str, WebKit2.FindOptions.CASE_INSENSITIVE, 0);
     },
 
-    prev: function() {
+    _goprev: function() {
         let fc = this._previewView.view.get_find_controller();
         fc.search_previous();
     },
 
-    next: function() {
+    _gonext: function() {
         let fc = this._previewView.view.get_find_controller();
         fc.search_next();
     },
 
     entryChanged: function() {
-        this.search(this._searchEntry.get_text());
+        this._search(this._searchEntry.get_text());
     },
 
     reveal: function() {
         this.parent();
-        this.search(this._searchEntry.get_text());
+        this._search(this._searchEntry.get_text());
     },
 
     conceal: function() {
@@ -295,57 +286,20 @@ const EPUBViewToolbar = new Lang.Class({
 
         // back button, on the left of the toolbar
         let backButton = this.addBackButton();
-        backButton.connect('clicked', Lang.bind(this,
-            function() {
-                Application.documentManager.setActiveItem(null);
-                Application.modeController.goBack();
-                this._searchAction.enabled = true;
-            }));
-
-        // menu button, on the right of the toolbar
-        let previewMenu = this._getPreviewMenu();
-        let menuButton = new Gtk.MenuButton({ image: new Gtk.Image ({ icon_name: 'open-menu-symbolic' }),
-                                              menu_model: previewMenu,
-                                              action_name: 'app.gear-menu' });
-        this.toolbar.pack_end(menuButton);
+        backButton.connect('clicked', Lang.bind(this, function() {
+            Application.documentManager.setActiveItem(null);
+            Application.modeController.goBack();
+        }));
 
         // search button, on the right of the toolbar
         this.addSearchButton();
 
         this._setToolbarTitle();
         this.toolbar.show_all();
-
-        this.connect('destroy', Lang.bind(this,
-            function() {
-                this._searchAction.enabled = true;
-            }));
     },
 
     createSearchbar: function() {
         return new EPUBSearchbar(this._previewView);
-    },
-
-    _getPreviewMenu: function() {
-        let builder = new Gtk.Builder();
-        builder.add_from_resource('/org/gnome/Documents/ui/preview-menu.ui');
-        let menu = builder.get_object('preview-menu');
-        let section = builder.get_object('open-section');
-
-        section.remove(0);
-        // No edit support yet
-        section.remove(0);
-        // No print support yet
-        section.remove(0);
-        // No present support yet
-        section.remove(0);
-
-        // No rotate support
-        section = builder.get_object('rotate-section');
-        section.remove(0);
-        section.remove(0);
-
-        return menu;
-
     },
 
     _setToolbarTitle: function() {

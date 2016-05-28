@@ -22,6 +22,7 @@
 const EvDocument = imports.gi.EvinceDocument;
 const EvView = imports.gi.EvinceView;
 const LOKView = imports.lokview;
+const EPUBView = imports.epubview;
 const GdkPixbuf = imports.gi.GdkPixbuf;
 const Gio = imports.gi.Gio;
 const Gd = imports.gi.Gd;
@@ -623,9 +624,8 @@ const DocCommon = new Lang.Class({
             return;
         }
 
-        if (this.mimeType == 'application/epub+zip') {
-            let exception = null;
-            callback(this, null, exception);
+        if (EPUBView.isEpub(this.mimeType) && Application.application.isBooks) {
+            callback(this, null, null);
             return;
         }
 
@@ -710,7 +710,7 @@ const DocCommon = new Lang.Class({
     updateViewType: function() {
         if (LOKView.isOpenDocumentFormat(this.mimeType) && !Application.application.isBooks) {
             this.viewType = ViewType.LOK;
-        } else if (this.mimeType == 'application/epub+zip') {
+        } else if (EPUBView.isEpub(this.mimeType) && Application.application.isBooks) {
             this.viewType = ViewType.EPUB;
         } else {
             this.viewType = ViewType.EV;
