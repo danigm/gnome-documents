@@ -102,25 +102,35 @@ const EPUBView = new Lang.Class({
         this._setError(message, exception.message);
     },
 
+    _getResource: function(req) {
+        var uri = req.get_uri();
+        // removing "epub://"
+        var path = uri.slice(7);
+        var stream = new Gio.MemoryInputStream();
+        var data = this._epubdoc.get_resource_v(path);
+        var mime = this._epubdoc.get_resource_mime(path);
+        stream.add_data(data);
+        req.finish(stream, data.length, mime);
+    },
+
     _replaceResource: function(doc, tag, attr) {
-        // this function replaces the resource path with the base64 content
-        // of the file. It's done this way because resources paths in epub
-        // files are relative to the zip file and I can't find a way to
-        // provide the resource to webkit when it ask for it.
-        var ret2 = doc;
+        // this function replaces the resource path with "epub://RES" to
+        // provide these resources with a custom fuction and to avoid webkit
+        // to try to load it, because these resources are inside the epub
+        // file.
+        var ret = doc;
         var rex = new RegExp(attr+'\s*=\s*"([^"]*)"', "ig");
         var match = rex.exec(doc);
         while(match) {
             // removing relative path
             var path = match[1].replace(/^(\.*\/)/, '');
-            var data = this._epubdoc.get_resource_v(path);
-            var mime = this._epubdoc.get_resource_mime(path);
-            var data2 = "data:" + mime + ";base64," + GLib.base64_encode(data);
-            ret2 = ret2.replace(match[1], data2);
+            // adding epub uri prefix
+            path = "epub://" + path;
+            ret = ret.replace(match[1], path);
             match = rex.exec(doc);
         }
 
-        return ret2;
+        return ret;
     },
 
     _replaceResources: function(current) {
@@ -148,6 +158,9 @@ const EPUBView = new Lang.Class({
 
     _createView: function() {
         this.view = new WebKit2.WebView();
+        var ctx = this.view.get_context();
+        ctx.register_uri_scheme("epub", Lang.bind(this, this._getResource));
+
         this._sw.add(this.view);
         this.view.show();
 
