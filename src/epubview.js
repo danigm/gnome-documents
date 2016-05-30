@@ -137,11 +137,11 @@ const EPUBView = new Lang.Class({
         // resources as base64 to avoid path search
 
         let ret = current;
-        // css
+        // replacing css resources
         ret = this._replaceResource(ret, "link", "href");
-        // images
+        // replacing images resources
         ret = this._replaceResource(ret, "img", "src");
-        // svg images
+        // replacing svg images resources
         ret = this._replaceResource(ret, "image", "xlink:href");
 
         return ret;
