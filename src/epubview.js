@@ -89,8 +89,8 @@ const EPUBView = new Lang.Class({
 
         let f = Gio.File.new_for_uri(doc.uri);
         this._doc = doc;
-        //this._epubdoc = new Gepub.Doc({ path: f.get_path() });
-        this._epubdoc = Gepub.Doc.new(f.get_path());
+        this._epubdoc = new Gepub.Doc({ path: f.get_path() });
+        this._epubdoc.init(null);
         this._epubSpine = this._epubdoc.get_spine();
         this._load_current();
         this.set_visible_child_name('view');
@@ -134,7 +134,8 @@ const EPUBView = new Lang.Class({
     },
 
     _replaceResources: function(current) {
-        // resources as base64 to avoid path search
+        // replacing epub media paths, for css, image and svg files, to be
+        // able to provide these files to webkit from the epub file
 
         let ret = current;
         // replacing css resources
