@@ -118,61 +118,6 @@ const EPUBView = new Lang.Class({
         req.finish(stream, data.length, mime);
     },
 
-    _relativeToAbsolute: function(path, basePath) {
-        // converts a document relative path to an absolute path, using
-        // basePath as document current path, for example:
-        //  path: ../Images/cover.jpg
-        //  basePath: OEBPS/Texts
-        //  result: OEBPS/Images/cover.jpg
-        var parts = path.split('/');
-        var baseparts = basePath.split('/');
-        for (var i=0; i<parts.length; i++) {
-            var p = parts[i];
-            if (p == '..') {
-                baseparts.pop();
-            } else {
-                baseparts.push(p);
-            }
-        }
-        return baseparts.join('/');
-    },
-
-    _replaceResource: function(doc, currentPath, tag, attr) {
-        // this function replaces the resource path with "epub://RES" to
-        // provide these resources with a custom fuction and to avoid webkit
-        // to try to load it, because these resources are inside the epub
-        // file.
-        var ret = doc;
-        var rex = new RegExp(tag + '.*' + attr + '\s*=\s*"([^"]*)"', "ig");
-        var match = rex.exec(doc);
-        while(match) {
-            // paths are relative to the doc, so we prepend the current doc
-            // path
-            var path = this._relativeToAbsolute(match[1], currentPath);
-            // adding epub uri prefix
-            path = "epub://" + path;
-            ret = ret.replace(match[1], path);
-            match = rex.exec(doc);
-        }
-
-        return ret;
-    },
-
-    _replaceResources: function(current, path) {
-        // replacing epub media paths, for css, image and svg files, to be
-        // able to provide these files to webkit from the epub file
-
-        let ret = current;
-        // replacing css resources
-        ret = this._replaceResource(ret, path, "link", "href");
-        // replacing images resources
-        ret = this._replaceResource(ret, path, "img", "src");
-        // replacing svg images resources
-        ret = this._replaceResource(ret, path, "image", "xlink:href");
-
-        return ret;
-    },
-
     reset: function () {
         if (!this.view)
             return;
@@ -214,13 +159,8 @@ const EPUBView = new Lang.Class({
     },
 
     _load_current: function() {
-        var current = this._epubdoc.get_current();
         var mime = this._epubdoc.get_current_mime();
-        var path = this._epubdoc.get_current_path();
-
-        // getting the basepath of the current xhtml loaded
-        path = path.split('/').slice(0,-1).join('/');
-        current = this._replaceResources(String(current), path);
+        var current = this._epubdoc.get_current_with_epub_uris ();
         this.view.load_bytes(new GLib.Bytes(current), mime, "UTF-8", null);
     }
 });
