@@ -25,7 +25,6 @@ const Mainloop = imports.mainloop;
 const Application = imports.application;
 const MainToolbar = imports.mainToolbar;
 const Password = imports.password;
-const Preview = imports.preview;
 const Edit = imports.edit;
 const Search = imports.search;
 const Selections = imports.selections;
@@ -34,6 +33,7 @@ const WindowMode = imports.windowMode;
 const Documents = imports.documents;
 
 const EvView = imports.gi.EvinceView;
+const EvinceView = imports.evinceview;
 const LOKView = imports.lokview;
 const EPUBView = imports.epubview;
 const GLib = imports.gi.GLib;
@@ -84,7 +84,7 @@ const Embed = new Lang.Class({
         this._search = new View.ViewContainer(WindowMode.WindowMode.SEARCH);
         this._stack.add_named(this._search, 'search');
 
-        this._previewEv = new Preview.PreviewView(this._stackOverlay);
+        this._previewEv = new EvinceView.EvinceView(this._stackOverlay);
         this._stack.add_named(this._previewEv, 'preview-ev');
 
         this._previewEPUB = new EPUBView.EPUBView(this._stackOverlay);
@@ -150,7 +150,7 @@ const Embed = new Lang.Class({
         case WindowMode.WindowMode.DOCUMENTS:
             view = this._documents;
             break;
-        case WindowMode.WindowMode.PREVIEW:
+        case WindowMode.WindowMode.PREVIEW_EV:
             view = this._previewEv;
             break;
         case WindowMode.WindowMode.PREVIEW_LOK:
@@ -190,7 +190,7 @@ const Embed = new Lang.Class({
         case WindowMode.WindowMode.DOCUMENTS:
             page = 'documents';
             break;
-        case WindowMode.WindowMode.PREVIEW:
+        case WindowMode.WindowMode.PREVIEW_EV:
             page = 'preview-ev';
             break;
         case WindowMode.WindowMode.SEARCH:
@@ -242,7 +242,7 @@ const Embed = new Lang.Class({
         let windowMode = Application.modeController.getWindowMode();
         if (windowMode == WindowMode.WindowMode.SEARCH && doc)
             return;
-        if (windowMode == WindowMode.WindowMode.PREVIEW)
+        if (windowMode == WindowMode.WindowMode.PREVIEW_EV)
             return;
 
         let searchType = Application.searchTypeManager.getActiveItem();
@@ -280,10 +280,10 @@ const Embed = new Lang.Class({
         case WindowMode.WindowMode.SEARCH:
             this._prepareForOverview(newMode, oldMode);
             break;
-        case WindowMode.WindowMode.PREVIEW:
+        case WindowMode.WindowMode.PREVIEW_EV:
             if (oldMode == WindowMode.WindowMode.EDIT)
                 Application.documentManager.reloadActiveItem();
-            this._prepareForPreview();
+            this._prepareForEvinceView();
             break;
         case WindowMode.WindowMode.PREVIEW_LOK:
             if (oldMode == WindowMode.WindowMode.EDIT)
@@ -332,7 +332,7 @@ const Embed = new Lang.Class({
 
     _onActiveItemChanged: function(manager, doc) {
         let windowMode = Application.modeController.getWindowMode();
-        let showSearch = (windowMode == WindowMode.WindowMode.PREVIEW && !doc
+        let showSearch = (windowMode == WindowMode.WindowMode.PREVIEW_EV && !doc
                           || windowMode == WindowMode.WindowMode.SEARCH && !doc);
         if (showSearch)
             this._restoreSearch();
@@ -355,7 +355,7 @@ const Embed = new Lang.Class({
         else if (doc.mimeType == 'application/epub+zip')
             Application.modeController.setWindowMode(WindowMode.WindowMode.PREVIEW_EPUB);
         else
-            Application.modeController.setWindowMode(WindowMode.WindowMode.PREVIEW);
+            Application.modeController.setWindowMode(WindowMode.WindowMode.PREVIEW_EV);
 
         this._clearLoadTimer();
         this._loadShowId = Mainloop.timeout_add(_PDF_LOADER_TIMEOUT, Lang.bind(this,
@@ -459,14 +459,14 @@ const Embed = new Lang.Class({
         this._stack.set_visible_child_name(visibleChildName);
     },
 
-    _prepareForPreview: function() {
+    _prepareForEvinceView: function() {
         if (this._edit)
             this._edit.setUri(null);
         if (this._toolbar)
             this._toolbar.destroy();
 
         // pack the toolbar
-        this._toolbar = new Preview.PreviewToolbar(this._previewEv);
+        this._toolbar = new EvinceView.EvinceViewToolbar(this._previewEv);
         this._titlebar.add(this._toolbar);
 
         this._stack.set_visible_child_name('preview-ev');
@@ -521,13 +521,13 @@ const Embed = new Lang.Class({
         let windowMode = Application.modeController.getWindowMode();
         let fullscreen = Application.modeController.getFullscreen();
 
-        if (fullscreen && (windowMode == WindowMode.WindowMode.PREVIEW))
+        if (fullscreen && (windowMode == WindowMode.WindowMode.PREVIEW_EV))
             return this._previewEv.getFullscreenToolbar();
         else
             return this._toolbar;
     },
 
-    getPreview: function() {
+    getEvinceView: function() {
         //FIXME When we can pass clicks and key presses
         //to the view, we'll need to grab the real current view
         return this._previewEv;

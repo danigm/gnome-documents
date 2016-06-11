@@ -746,6 +746,9 @@ const LocalDocument = new Lang.Class({
             let apps = Gio.app_info_get_recommended_for_type (this.mimeType);
             for (let i = 0; i < apps.length; i++) {
                 if (apps[i].supports_uris ()) {
+                    // Never offer to open in an archive handler
+                    if (apps[i].get_id() == 'org.gnome.FileRoller.desktop')
+                        continue;
                     if (defaultApp && apps[i].equal (defaultApp)) {
                         // Found the recommended app that's also the default
                         recommendedApp = apps[i];
@@ -1394,11 +1397,11 @@ const DocumentManager = new Lang.Class({
 
         // save loaded model and signal
         this._activeDocModel = docModel;
-        if (this._activeModel)
+        if (this._activeDocModel)
             this._activeDocModel.set_continuous(false);
 
         // load metadata
-        this._connectMetadata(docModel);
+        this._connectMetadata();
 
         this.emit('load-finished', doc, docModel);
     },
@@ -1512,22 +1515,23 @@ const DocumentManager = new Lang.Class({
         }
     },
 
-    _connectMetadata: function(docModel) {
-        if (!docModel)
+    _connectMetadata: function() {
+        if (!this._activeDocModel)
             return;
-        let evDoc = docModel.get_document();
+        let evDoc = this._activeDocModel.get_document();
         let file = Gio.File.new_for_uri(evDoc.get_uri());
         if (!GdPrivate.is_metadata_supported_for_file(file))
             return;
 
         this.metadata = new GdPrivate.Metadata({ file: file });
 
-        // save current page in metadata
         let [res, val] = this.metadata.get_int('page');
         if (res)
-            docModel.set_page(val);
+            this._activeDocModel.set_page(val);
+
+        // save current page in metadata
         this._activeDocModelIds.push(
-            docModel.connect('page-changed', Lang.bind(this,
+            this._activeDocModel.connect('page-changed', Lang.bind(this,
                 function(source, oldPage, newPage) {
                     this.metadata.set_int('page', newPage);
                 }))

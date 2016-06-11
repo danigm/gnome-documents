@@ -151,7 +151,7 @@ const MainWindow = new Lang.Class({
             handled = false;
             break;
         case WindowMode.WindowMode.EDIT:
-        case WindowMode.WindowMode.PREVIEW:
+        case WindowMode.WindowMode.PREVIEW_EV:
             Application.documentManager.setActiveItem(null);
             Application.modeController.goBack();
             break;
@@ -193,7 +193,7 @@ const MainWindow = new Lang.Class({
         switch (Application.modeController.getWindowMode()) {
         case WindowMode.WindowMode.NONE:
             return false;
-        case WindowMode.WindowMode.PREVIEW:
+        case WindowMode.WindowMode.PREVIEW_EV:
             return this._handleKeyPreview(event);
         case WindowMode.WindowMode.COLLECTIONS:
         case WindowMode.WindowMode.DOCUMENTS:
@@ -235,7 +235,7 @@ const MainWindow = new Lang.Class({
         let keyval = event.get_keyval()[1];
         let fullscreen = Application.modeController.getFullscreen();
         let def_mod_mask = Gtk.accelerator_get_default_mod_mask();
-        let preview = this._embed.getPreview();
+        let preview = this._embed.getEvinceView();
         let state = event.get_state()[1];
 
         if (keyval == Gdk.KEY_Escape) {

@@ -231,8 +231,11 @@ const Application = new Lang.Class({
         settings.set_value('night-mode', GLib.Variant.new('b', !state.get_boolean()));
     },
 
-    _onActionFullscreen: function() {
-        modeController.toggleFullscreen();
+    _onActionFullscreen: function(action) {
+        let state = action.get_state();
+        let newState = !state.get_boolean();
+        action.change_state(GLib.Variant.new('b', newState));
+        modeController.setFullscreen(newState);
     },
 
     _onActionViewAs: function(action, parameter) {
@@ -328,14 +331,6 @@ const Application = new Lang.Class({
                         }));
                 }
             }));
-    },
-
-    _initAppMenu: function() {
-        let builder = new Gtk.Builder();
-        builder.add_from_resource('/org/gnome/Documents/ui/app-menu.ui');
-
-        let menu = builder.get_object('app-menu');
-        this.set_app_menu(menu);
     },
 
     _createMiners: function(callback) {
@@ -539,9 +534,10 @@ const Application = new Lang.Class({
               accels: ['F1'] },
             { name: 'fullscreen',
               callback: this._onActionFullscreen,
+              state: GLib.Variant.new('b', false),
               create_hook: this._fullscreenCreateHook,
               accels: ['F11'],
-              window_mode: WindowMode.WindowMode.PREVIEW },
+              window_mode: WindowMode.WindowMode.PREVIEW_EV },
             { name: 'night-mode',
               callback: this._onActionNightMode,
               create_hook: this._nightModeCreateHook,
@@ -568,16 +564,11 @@ const Application = new Lang.Class({
                              WindowMode.WindowMode.SEARCH] },
             { name: 'open-current',
               callback: this._onActionOpenCurrent,
-              window_modes: [WindowMode.WindowMode.PREVIEW,
+              window_modes: [WindowMode.WindowMode.PREVIEW_EV,
                              WindowMode.WindowMode.PREVIEW_LOK] },
             { name: 'edit-current' },
             { name: 'view-current',
               window_mode: WindowMode.WindowMode.EDIT },
-            { name: 'present-current',
-              window_mode: WindowMode.WindowMode.PREVIEW,
-              callback: this._onActionToggle,
-              state: GLib.Variant.new('b', false),
-              accels: ['F5'] },
             { name: 'print-current', accels: ['<Primary>p'],
               callback: this._onActionPrintCurrent },
             { name: 'search',
@@ -585,19 +576,19 @@ const Application = new Lang.Class({
               state: GLib.Variant.new('b', false),
               accels: ['<Primary>f'] },
             { name: 'find-next', accels: ['<Primary>g'],
-              window_mode: WindowMode.WindowMode.PREVIEW },
+              window_mode: WindowMode.WindowMode.PREVIEW_EV },
             { name: 'find-prev', accels: ['<Shift><Primary>g'],
-              window_mode: WindowMode.WindowMode.PREVIEW },
+              window_mode: WindowMode.WindowMode.PREVIEW_EV },
             { name: 'zoom-in', accels: ['<Primary>plus', '<Primary>equal'],
-              window_modes: [WindowMode.WindowMode.PREVIEW,
+              window_modes: [WindowMode.WindowMode.PREVIEW_EV,
                              WindowMode.WindowMode.PREVIEW_LOK] },
             { name: 'zoom-out', accels: ['<Primary>minus'],
-              window_modes: [WindowMode.WindowMode.PREVIEW,
+              window_modes: [WindowMode.WindowMode.PREVIEW_EV,
                              WindowMode.WindowMode.PREVIEW_LOK] },
             { name: 'rotate-left', accels: ['<Primary>Left'],
-              window_mode: WindowMode.WindowMode.PREVIEW },
+              window_mode: WindowMode.WindowMode.PREVIEW_EV },
             { name: 'rotate-right', accels: ['<Primary>Right'],
-              window_mode: WindowMode.WindowMode.PREVIEW },
+              window_mode: WindowMode.WindowMode.PREVIEW_EV },
             { name: 'select-all', accels: ['<Primary>a'],
               window_modes: [WindowMode.WindowMode.COLLECTIONS,
                              WindowMode.WindowMode.DOCUMENTS,
@@ -608,19 +599,19 @@ const Application = new Lang.Class({
                              WindowMode.WindowMode.SEARCH] },
             { name: 'properties',
               callback: this._onActionProperties,
-              window_modes: [WindowMode.WindowMode.PREVIEW,
+              window_modes: [WindowMode.WindowMode.PREVIEW_EV,
                              WindowMode.WindowMode.PREVIEW_LOK] },
             { name: 'bookmark-page',
               callback: this._onActionToggle,
               state: GLib.Variant.new('b', false),
               accels: ['<Primary>d'],
-              window_mode: WindowMode.WindowMode.PREVIEW },
+              window_mode: WindowMode.WindowMode.PREVIEW_EV },
             { name: 'places',
               accels: ['<Primary>b'],
-              window_mode: WindowMode.WindowMode.PREVIEW },
+              window_mode: WindowMode.WindowMode.PREVIEW_EV },
             { name: 'copy',
               accels: ['<Primary>c'],
-              window_mode: WindowMode.WindowMode.PREVIEW },
+              window_mode: WindowMode.WindowMode.PREVIEW_EV },
             { name: 'search-source',
               parameter_type: 's',
               state: GLib.Variant.new('s', Search.SearchSourceStock.ALL),
@@ -641,11 +632,17 @@ const Application = new Lang.Class({
                              WindowMode.WindowMode.SEARCH] }
         ];
 
-        this._initActions();
-        this._initAppMenu();
-
-        if (!this.isBooks)
+        if (!this.isBooks) {
+            this._actionEntries.push (
+            { name: 'present-current',
+              window_mode: WindowMode.WindowMode.PREVIEW_EV,
+              callback: this._onActionToggle,
+              state: GLib.Variant.new('b', false),
+              accels: ['F5'] });
             this._initGettingStarted();
+        }
+
+        this._initActions();
     },
 
     _createWindow: function() {
@@ -729,7 +726,7 @@ const Application = new Lang.Class({
 
     _onActivateResult: function(provider, urn, terms, timestamp) {
         this._createWindow();
-        modeController.setWindowMode(WindowMode.WindowMode.PREVIEW);
+        modeController.setWindowMode(WindowMode.WindowMode.PREVIEW_EV);
 
         let doc = documentManager.getItemById(urn);
         if (doc) {
@@ -755,7 +752,7 @@ const Application = new Lang.Class({
             let modeChangeId = modeController.connect('window-mode-changed', Lang.bind(this,
                 function(object, newMode) {
                     if (newMode == WindowMode.WindowMode.EDIT
-                        || newMode == WindowMode.WindowMode.PREVIEW)
+                        || newMode == WindowMode.WindowMode.PREVIEW_EV)
                         return;
 
                     modeController.disconnect(modeChangeId);
