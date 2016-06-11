@@ -76,9 +76,19 @@ const EPUBView = new Lang.Class({
             this._onWindowModeChanged));
 
         let findPrev = Application.application.lookup_action('find-prev');
-        let findPrevId = findPrev.connect('activate', Lang.bind(this, this._goPrev));
+        let findPrevId = findPrev.connect('activate', Lang.bind(this, this._findPrev));
         let findNext = Application.application.lookup_action('find-next');
-        let findNextId = findNext.connect('activate',  Lang.bind(this, this._goNext));
+        let findNextId = findNext.connect('activate',  Lang.bind(this, this._findNext));
+    },
+
+    _findNext: function() {
+        let fc = this.view.get_find_controller();
+        fc.search_next();
+    },
+
+    _findPrev: function() {
+        let fc = this.view.get_find_controller();
+        fc.search_previous();
     },
 
     _onWindowModeChanged: function() {
@@ -215,16 +225,6 @@ const EPUBSearchbar = new Lang.Class({
     _search: function(str) {
         let fc = this._previewView.view.get_find_controller();
         fc.search(str, WebKit2.FindOptions.CASE_INSENSITIVE, 0);
-    },
-
-    _goPrev: function() {
-        let fc = this._previewView.view.get_find_controller();
-        fc.search_previous();
-    },
-
-    _goNext: function() {
-        let fc = this._previewView.view.get_find_controller();
-        fc.search_next();
     },
 
     entryChanged: function() {
