@@ -352,7 +352,7 @@ const Embed = new Lang.Class({
     _onLoadStarted: function(manager, doc) {
         if (LOKView.isOpenDocumentFormat(doc.mimeType))
             Application.modeController.setWindowMode(WindowMode.WindowMode.PREVIEW_LOK);
-        else if (doc.mimeType == 'application/epub+zip')
+        else if (EPUBView.isEpub(doc.mimeType))
             Application.modeController.setWindowMode(WindowMode.WindowMode.PREVIEW_EPUB);
         else
             Application.modeController.setWindowMode(WindowMode.WindowMode.PREVIEW_EV);

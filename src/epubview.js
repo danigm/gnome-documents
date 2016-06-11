@@ -21,25 +21,25 @@
 
 const GLib = imports.gi.GLib;
 const Gdk = imports.gi.Gdk;
+const Gepub = imports.gi.Gepub;
+const Gio = imports.gi.Gio;
 const Gtk = imports.gi.Gtk;
 const WebKit2 = imports.gi.WebKit2;
+
 const _ = imports.gettext.gettext;
 
 const Lang = imports.lang;
 
 const Application = imports.application;
+const Documents = imports.documents;
 const ErrorBox = imports.errorBox;
 const MainToolbar = imports.mainToolbar;
-const Documents = imports.documents;
 const Searchbar = imports.searchbar;
 const WindowMode = imports.windowMode;
 
 const Mainloop = imports.mainloop;
 const Signals = imports.signals;
 const Tweener = imports.tweener.tweener;
-
-const Gepub = imports.gi.Gepub;
-const Gio = imports.gi.Gio;
 
 function isEpub(mimeType) {
     return (mimeType == 'application/epub+zip');
@@ -74,6 +74,11 @@ const EPUBView = new Lang.Class({
                                             Lang.bind(this, this._onLoadError));
         Application.modeController.connect('window-mode-changed', Lang.bind(this,
             this._onWindowModeChanged));
+
+        let findPrev = Application.application.lookup_action('find-prev');
+        let findPrevId = findPrev.connect('activate', Lang.bind(this, this._goPrev));
+        let findNext = Application.application.lookup_action('find-next');
+        let findNextId = findNext.connect('activate',  Lang.bind(this, this._goNext));
     },
 
     _onWindowModeChanged: function() {
@@ -194,14 +199,14 @@ const EPUBView = new Lang.Class({
         this.set_visible_child_name('error');
     },
 
-    go_next: function() {
+    goNext: function() {
         if (this._epubdoc.go_next()) {
             this.page++;
             this._load_current();
         }
     },
 
-    go_prev: function() {
+    goPrev: function() {
         if (this._epubdoc.go_prev()) {
             this.page--;
             this._load_current();
@@ -244,14 +249,12 @@ const EPUBSearchbar = new Lang.Class({
         this._prev.set_image(new Gtk.Image({ icon_name: 'go-up-symbolic',
                                              icon_size: Gtk.IconSize.MENU }));
         this._prev.set_tooltip_text(_("Find Previous"));
-        this._prev.connect('clicked', Lang.bind(this, this._goprev));
         this._searchContainer.add(this._prev);
 
         this._next = new Gtk.Button({ action_name: 'app.find-next' });
         this._next.set_image(new Gtk.Image({ icon_name: 'go-down-symbolic',
                                              icon_size: Gtk.IconSize.MENU }));
         this._next.set_tooltip_text(_("Find Next"));
-        this._next.connect('clicked', Lang.bind(this, this._gonext));
         this._searchContainer.add(this._next);
 
         let fc = this._previewView.view.get_find_controller();
@@ -274,12 +277,12 @@ const EPUBSearchbar = new Lang.Class({
         fc.search(str, WebKit2.FindOptions.CASE_INSENSITIVE, 0);
     },
 
-    _goprev: function() {
+    _goPrev: function() {
         let fc = this._previewView.view.get_find_controller();
         fc.search_previous();
     },
 
-    _gonext: function() {
+    _goNext: function() {
         let fc = this._previewView.view.get_find_controller();
         fc.search_next();
     },
@@ -294,8 +297,8 @@ const EPUBSearchbar = new Lang.Class({
     },
 
     conceal: function() {
+        this._search("");
         let fc = this._previewView.view.get_find_controller();
-        fc.search('', WebKit2.FindOptions.CASE_INSENSITIVE, 0);
         fc.search_finish();
 
         this.searchChangeBlocked = true;
@@ -427,11 +430,11 @@ const EPUBViewNavControls = new Lang.Class({
     },
 
     _onPrevClicked: function() {
-        this._epubView.go_prev();
+        this._epubView.goPrev();
     },
 
     _onNextClicked: function() {
-        this._epubView.go_next();
+        this._epubView.goNext();
     },
 
     _autoHide: function() {
